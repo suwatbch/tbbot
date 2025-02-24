@@ -1,9 +1,6 @@
 'use client'
 import { useState, useEffect } from "react";
-import ArrowRightAltIcon from '@mui/icons-material/ArrowRightAlt';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
-import PersonOutlineIcon from '@mui/icons-material/PersonOutline';
-import LockOutlinedIcon from '@mui/icons-material/LockOutlined';
 import DirectionsCarOutlinedIcon from '@mui/icons-material/DirectionsCarOutlined';
 import RouteOutlinedIcon from '@mui/icons-material/RouteOutlined';
 import AddRoadOutlinedIcon from '@mui/icons-material/AddRoadOutlined';
@@ -13,15 +10,17 @@ import StopOutlinedIcon from '@mui/icons-material/StopOutlined';
 interface RoutePoint {
   id: number;
   start: string;
-  end: string;
 }
 
 export default function Home() {
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
-  const [carCount, setCarCount] = useState('');
+  const [carTypes, setCarTypes] = useState([
+    { type: '4W', quantity: 1 },
+    { type: '4WJ', quantity: 0 },
+    { type: '6W5.5', quantity: 0 },
+    { type: '6W7.2', quantity: 0 }
+  ]);
   const [routes, setRoutes] = useState<RoutePoint[]>([
-    { id: 1, start: '', end: '' }
+    { id: 1, start: '' }
   ]);
 
   useEffect(() => {
@@ -30,10 +29,10 @@ export default function Home() {
 
   const handleAddRoute = () => {
     const newId = routes.length + 1;
-    setRoutes([...routes, { id: newId, start: '', end: '' }]);
+    setRoutes([...routes, { id: newId, start: '' }]);
   };
 
-  const handleRouteChange = (id: number, field: 'start' | 'end', value: string) => {
+  const handleRouteChange = (id: number, field: 'start', value: string) => {
     setRoutes(routes.map(route => 
       route.id === id ? { ...route, [field]: value } : route
     ));
@@ -50,10 +49,15 @@ export default function Home() {
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    // TODO: Implement login logic here
-    console.log('Login attempt:', { username, password });
+  const handleAddCarType = () => {
+    setCarTypes([...carTypes, { type: '', quantity: 0 }]);
+  };
+
+  const handleRemoveCarType = (index: number) => {
+    if (carTypes.length > 1) {
+      const newCarTypes = carTypes.filter((_, i) => i !== index);
+      setCarTypes(newCarTypes);
+    }
   };
 
   return (
@@ -70,64 +74,61 @@ export default function Home() {
           </h2>
         </div>
 
-        <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
+        <form className="mt-8 space-y-6">
           <div className="space-y-4">
             <div>
-              <label htmlFor="username" className="block text-sm font-medium text-gray-700 flex items-center gap-2">
-                <PersonOutlineIcon className="text-gray-400" />
-                ชื่อผู้ใช้
-              </label>
-              <div className="mt-1">
-                <input
-                  id="username"
-                  name="username"
-                  type="text"
-                  required
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
-                  className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
-                  placeholder="กรุณากรอกชื่อผู้ใช้"
-                />
-              </div>
-            </div>
-
-            <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700 flex items-center gap-2">
-                <LockOutlinedIcon className="text-gray-400" />
-                รหัสผ่าน
-              </label>
-              <div className="mt-1">
-                <input
-                  id="password"
-                  name="password"
-                  type="password"
-                  required
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
-                  placeholder="กรุณากรอกรหัสผ่าน"
-                />
-              </div>
-            </div>
-
-            <div>
-              <label htmlFor="carCount" className="block text-sm font-medium text-gray-700 flex items-center gap-2">
+              <label className="block text-sm font-medium text-gray-700 flex items-center gap-2">
                 <DirectionsCarOutlinedIcon className="text-gray-400" />
-                จำนวนรถที่ว่าง
+                ประเภทและจำนวนรถ
               </label>
-              <div className="mt-1">
-                <input
-                  id="carCount"
-                  name="carCount"
-                  type="number"
-                  required
-                  min="1"
-                  value={carCount}
-                  onChange={(e) => setCarCount(e.target.value)}
-                  className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
-                  placeholder="กรุณากรอกจำนวนรถ"
-                />
+              <div className="space-y-3 mt-1">
+                {carTypes.map((car, index) => (
+                  <div key={index} className="flex items-center space-x-4">
+                    <div className="flex-1">
+                      <input
+                        type="text"
+                        value={car.type}
+                        onChange={(e) => {
+                          const newCarTypes = [...carTypes];
+                          newCarTypes[index].type = e.target.value;
+                          setCarTypes(newCarTypes);
+                        }}
+                        className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+                        placeholder="ประเภท"
+                      />
+                    </div>
+                    <div className="flex-1">
+                      <input
+                        type="number"
+                        min="0"
+                        value={car.quantity}
+                        onChange={(e) => {
+                          const newCarTypes = [...carTypes];
+                          newCarTypes[index].quantity = parseInt(e.target.value, 10);
+                          setCarTypes(newCarTypes);
+                        }}
+                        className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+                        placeholder="จำนวน"
+                      />
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveCarType(index)}
+                      className={`p-2 rounded-lg text-red-600 bg-red-100 hover:text-red-700 hover:bg-red-200 transition-colors duration-200 ${carTypes.length === 1 ? 'opacity-50 cursor-not-allowed' : ''}`}
+                      disabled={carTypes.length === 1}
+                    >
+                      <DeleteOutlineIcon style={{ fontSize: 24 }} />
+                    </button>
+                  </div>
+                ))}
               </div>
+              <button
+                type="button"
+                onClick={handleAddCarType}
+                className="mt-3 w-full flex justify-center items-center gap-2 py-2 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-blue-600 bg-blue-100 hover:bg-blue-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-300 transition-colors duration-200"
+              >
+                เพิ่มประเภทรถ
+              </button>
             </div>
 
             <div>
@@ -152,26 +153,10 @@ export default function Home() {
                       />
                     </div>
 
-                    <ArrowRightAltIcon 
-                      className="text-gray-400" 
-                      style={{ fontSize: 28 }}
-                    />
-
-                    <div className="flex-1">
-                      <input
-                        type="text"
-                        required
-                        value={route.end}
-                        onChange={(e) => handleRouteChange(route.id, 'end', e.target.value)}
-                        className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
-                        placeholder="สิ้นสุด"
-                      />
-                    </div>
-
                     <button
                       type="button"
                       onClick={() => handleDeleteRoute(route.id)}
-                      className={`p-2 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors duration-200 ${routes.length === 1 ? 'opacity-50 cursor-not-allowed' : ''}`}
+                      className={`p-2 rounded-lg text-red-600 bg-red-100 hover:text-red-700 hover:bg-red-200 transition-colors duration-200 ${routes.length === 1 ? 'opacity-50 cursor-not-allowed' : ''}`}
                       disabled={routes.length === 1}
                     >
                       <DeleteOutlineIcon style={{ fontSize: 24 }} />
