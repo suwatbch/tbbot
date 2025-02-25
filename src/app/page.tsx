@@ -58,13 +58,13 @@ export default function Home() {
                 alert("กรุณายืนยันว่าไม่ใช่บอท ❌");
               }
             }}
-            // disabled={!captchaVerified}
-            // sx={{
-            //   backgroundColor: captchaVerified ? "success.main" : "grey.500",
-            //   "&:hover": {
-            //     backgroundColor: captchaVerified ? "success.dark" : "grey.500",
-            //   },
-            // }}
+            disabled={!captchaVerified}
+            sx={{
+              backgroundColor: captchaVerified ? "success.main" : "grey.500",
+              "&:hover": {
+                backgroundColor: captchaVerified ? "success.dark" : "grey.500",
+              },
+            }}
           >
             ยืนยัน
           </Button>
