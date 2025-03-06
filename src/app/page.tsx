@@ -9,6 +9,7 @@ import SearchOutlinedIcon from '@mui/icons-material/SearchOutlined';
 import CloseIcon from '@mui/icons-material/Close';
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 import ErrorOutlineIcon from '@mui/icons-material/ErrorOutline';
+import RefreshIcon from '@mui/icons-material/Refresh';
 
 interface RoutePoint {
   id: number;
@@ -129,24 +130,78 @@ export default function Home() {
     setAlerts([]);
   };
 
-  const handleCheckStatus = () => {
-    addAlert("กำลังตรวจสอบสถานะการทำงาน...", "info");
+  const handleCheckStatus = async () => {
+    try {
+      const response = await fetch('http://localhost:5000/status', {
+        method: 'GET'
+      });
+
+      const data = await response.json();
+      
+      // เลือกประเภทการแจ้งเตือนตามสถานะ
+      const alertType = data.status === 'running' ? 'success' : 'info';
+      addAlert(data.message, alertType);
+      
+      // ถ้ามีข้อมูล config เพิ่มเติม
+      if (data.config) {
+        const configMessage = `รถที่เหลือ: ${data.config.remainingCars.join(', ')}\nเส้นทางที่กำหนด: ${data.config.assignedRoutes.join(', ')}`;
+        addAlert(configMessage, alertType);
+      }
+    } catch (error) {
+      addAlert("ไม่สามารถเชื่อมต่อกับ API ได้", "error");
+    }
   };
 
-  const handleStop = () => {
-    addAlert("ระบบได้หยุดการทำงานแล้ว", "error");
+  const handleStop = async () => {
+    try {
+      const response = await fetch('http://localhost:5000/stop', {
+        method: 'GET'
+      });
+
+      const data = await response.json();
+      addAlert(data.message, "error");
+    } catch (error) {
+      addAlert("ไม่สามารถเชื่อมต่อกับ API ได้", "error");
+    }
   };
 
-  const handleStartJob = (e: React.FormEvent) => {
+  const handleRestartChrome = async () => {
+    try {
+      const response = await fetch('http://localhost:5000/restart-chrome', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          urls: [
+            window.location.href,
+            'https://th.turboroute.ai/#/login'
+          ]
+        })
+      });
+
+      const data = await response.json();
+      
+      if (data.status === "success") {
+        addAlert(data.message, "success");
+      } else {
+        addAlert(data.message, "error");
+      }
+    } catch (error) {
+      addAlert("ไม่สามารถเชื่อมต่อกับ API ได้", "error");
+    }
+  };
+
+  const handleStartJob = async (e: React.FormEvent) => {
     e.preventDefault();
     
     // เก็บรถที่เลือก (isActive = true)
     const selectedCars = carTypes.filter(car => car.isActive && car.quantity > 0)
-      .map(car => `${car.type} (${car.quantity} คัน)`);
+      .map(car => ({ type: car.type, quantity: car.quantity }));
 
     // เก็บเส้นทางที่เลือก (selected = true)
     const selectedRoutes = routes.filter(route => route.selected)
-      .map(route => `${route.id}. ${route.start}`);
+      .map(route => route.start);
 
     if (selectedCars.length === 0) {
       addAlert("กรุณาเลือกประเภทรถที่ต้องการใช้งาน", "warning");
@@ -158,30 +213,44 @@ export default function Home() {
       return;
     }
 
-    // สร้างข้อความแจ้งเตือน
-    const message = `รถที่รับงาน: ${selectedCars.join(", ")}\nเส้นทาง: ${selectedRoutes.join(", ")}`;
-    addAlert(message, "success");
+    try {
+      const response = await fetch('http://localhost:5000/start', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          cars: selectedCars,
+          routes: selectedRoutes
+        })
+      });
+
+      const data = await response.json();
+      addAlert(data.message, data.status === 'success' ? 'success' : 'error');
+    } catch (error) {
+      addAlert("ไม่สามารถเชื่อมต่อกับ API ได้", "error");
+    }
   };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
-      <div className="max-w-md w-full bg-white p-8 rounded-2xl shadow-lg">
+      <div className="max-w-md w-full bg-white p-6 rounded-xl shadow-lg">
         {/* Header */}
         <div className="text-center">
           <DirectionsCarOutlinedIcon 
-            style={{ fontSize: 48 }} 
-            className="text-blue-600 mb-4"
+            style={{ fontSize: 42 }} 
+            className="text-blue-600 mb-2"
           />
-          <h2 className="mt-2 text-3xl font-extrabold text-gray-900">
+          <h2 className="mt-2 text-2xl font-extrabold text-gray-900">
             Turbo Bot
           </h2>
           
           {/* Alert Area */}
-          <div className="mt-2 min-h-[3rem]">
+          <div className="mt-2 min-h-[2.5rem]">
             {alerts.map(alert => (
               <div
                 key={alert.id}
-                className={`flex items-start gap-2 p-1.5 rounded-lg text-sm whitespace-pre-line ${
+                className={`flex items-start gap-1.5 p-1.5 rounded-lg text-xs whitespace-pre-line ${
                   alert.type === 'info' 
                     ? 'bg-blue-50 text-blue-700'
                     : alert.type === 'success'
@@ -192,15 +261,15 @@ export default function Home() {
                 }`}
               >
                 {alert.type === 'info' ? (
-                  <InfoOutlinedIcon className="text-blue-500 mt-1.5 flex-shrink-0" style={{ fontSize: 14 }} />
+                  <InfoOutlinedIcon className="text-blue-500 mt-0.5 ml-1 flex-shrink-0" style={{ fontSize: 14 }} />
                 ) : alert.type === 'success' ? (
-                  <PlayArrowOutlinedIcon className="text-green-500 mt-1.5 flex-shrink-0" style={{ fontSize: 14 }} />
+                  <PlayArrowOutlinedIcon className="text-green-500 mt-0.5 ml-1 flex-shrink-0" style={{ fontSize: 14 }} />
                 ) : alert.type === 'warning' ? (
-                  <ErrorOutlineIcon className="text-orange-500 mt-1.5 flex-shrink-0" style={{ fontSize: 14 }} />
+                  <ErrorOutlineIcon className="text-orange-500 mt-0.5 ml-1 flex-shrink-0" style={{ fontSize: 14 }} />
                 ) : (
-                  <ErrorOutlineIcon className="text-red-500 mt-1.5 flex-shrink-0" style={{ fontSize: 14 }} />
+                  <ErrorOutlineIcon className="text-red-500 mt-0.5 ml-1 flex-shrink-0" style={{ fontSize: 14 }} />
                 )}
-                <span className="flex-1">{alert.message}</span>
+                <span className="flex-1 mt-0.5">{alert.message}</span>
                 <button
                   onClick={() => removeAlert(alert.id)}
                   className="p-0.5 hover:bg-gray-200 rounded-full flex-shrink-0"
@@ -212,17 +281,17 @@ export default function Home() {
           </div>
         </div>
 
-        <form className="space-y-6">
+        <form className="space-y-4">
           <div className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 flex items-center gap-2 mb-2">
-                <DirectionsCarOutlinedIcon className="text-gray-400" />
+                <DirectionsCarOutlinedIcon className="text-gray-400" style={{ fontSize: 20 }} />
                 ประเภทและจำนวนรถ
               </label>
-              <div className="space-y-3 mt-1">
+              <div className="space-y-2 mt-2">
                 {carTypes.map((car, index) => (
-                  <div key={index} className="flex items-center space-x-4">
-                    <div className="flex items-center">
+                  <div key={index} className="flex items-center gap-3">
+                    <div className="flex-none">
                       <input
                         type="checkbox"
                         checked={car.isActive}
@@ -230,7 +299,7 @@ export default function Home() {
                         className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
                       />
                     </div>
-                    <div className="flex-1">
+                    <div className="flex-[2]">
                       <input
                         type="text"
                         value={car.type || ''}
@@ -240,7 +309,7 @@ export default function Home() {
                           newCarTypes[index].type = newValue;
                           setCarTypes(newCarTypes);
                         }}
-                        className={`appearance-none block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 ${!car.isActive ? 'bg-gray-100 text-gray-500' : ''}`}
+                        className={`appearance-none block w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 ${!car.isActive ? 'bg-gray-100 text-gray-500' : ''}`}
                         placeholder="ประเภทรถ"
                         disabled={!car.isActive}
                       />
@@ -255,39 +324,41 @@ export default function Home() {
                           newCarTypes[index].quantity = parseInt(e.target.value, 10) || 0;
                           setCarTypes(newCarTypes);
                         }}
-                        className={`appearance-none block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 ${!car.isActive ? 'bg-gray-100 text-gray-500' : ''}`}
+                        className={`appearance-none block w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 ${!car.isActive ? 'bg-gray-100 text-gray-500' : ''}`}
                         placeholder="จำนวน"
                         disabled={!car.isActive}
                       />
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => handleRemoveCarType(index)}
-                      className={`p-2 rounded-lg text-red-600 bg-red-100 hover:text-red-700 hover:bg-red-200 transition-colors duration-200 ${carTypes.length === 1 ? 'opacity-50 cursor-not-allowed' : ''}`}
-                      disabled={carTypes.length === 1}
-                    >
-                      <DeleteOutlineIcon style={{ fontSize: 24 }} />
-                    </button>
+                    <div className="flex-none">
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveCarType(index)}
+                        className={`p-1 rounded-lg text-red-600 bg-red-100 hover:text-red-700 hover:bg-red-200 transition-colors duration-200 ${carTypes.length === 1 ? 'opacity-50 cursor-not-allowed' : ''}`}
+                        disabled={carTypes.length === 1}
+                      >
+                        <DeleteOutlineIcon style={{ fontSize: 16 }} />
+                      </button>
+                    </div>
                   </div>
                 ))}
               </div>
               <button
                 type="button"
                 onClick={handleAddCarType}
-                className="mt-3 w-full flex justify-center items-center gap-2 py-2 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-blue-600 bg-blue-100 hover:bg-blue-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-300 transition-colors duration-200"
+                className="mt-2 w-full flex justify-center items-center gap-2 py-1.5 px-3 text-sm border border-transparent rounded-lg shadow-sm font-medium text-blue-600 bg-blue-100 hover:bg-blue-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-300 transition-colors duration-200"
               >
-                <DirectionsCarOutlinedIcon />
+                <DirectionsCarOutlinedIcon style={{ fontSize: 16 }} />
                 เพิ่มประเภทรถ
               </button>
             </div>
 
             <div>
               <label className="block text-sm font-medium text-gray-700 flex items-center gap-2 mb-2">
-                <RouteOutlinedIcon className="text-gray-400" />
+                <RouteOutlinedIcon className="text-gray-400" style={{ fontSize: 20 }} />
                 เส้นทางรถ
               </label>
-              <div className="flex space-x-4">
-                <div className="flex-1">
+              <div className="flex gap-3">
+                <div className="flex-[3]">
                   <input
                     type="text"
                     value={currentRoute}
@@ -295,39 +366,41 @@ export default function Home() {
                       const newValue = e.target.value.replace(/[^A-Za-z0-9\s.-]/g, '').toUpperCase();
                       setCurrentRoute(newValue);
                     }}
-                    className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+                    className="appearance-none block w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
                     placeholder="กรอกเส้นทางเดินรถ"
                   />
                 </div>
-                <button
-                  type="button"
-                  onClick={handleAddRoute}
-                  disabled={!currentRoute.trim()}
-                  className={`flex justify-center items-center gap-2 px-4 py-2 border border-transparent rounded-lg shadow-sm text-sm font-medium ${
-                    currentRoute.trim() 
-                      ? 'text-blue-600 bg-blue-100 hover:bg-blue-200 focus:ring-blue-300' 
-                      : 'text-gray-400 bg-gray-100 cursor-not-allowed'
-                  } focus:outline-none focus:ring-2 focus:ring-offset-2 transition-colors duration-200`}
-                >
-                  <RouteOutlinedIcon />
-                  เพิ่มเส้นทาง
-                </button>
+                <div className="flex-none">
+                  <button
+                    type="button"
+                    onClick={handleAddRoute}
+                    disabled={!currentRoute.trim()}
+                    className={`flex justify-center items-center gap-2 px-3 py-1.5 text-sm border border-transparent rounded-lg shadow-sm font-medium ${
+                      currentRoute.trim() 
+                        ? 'text-blue-600 bg-blue-100 hover:bg-blue-200 focus:ring-blue-300' 
+                        : 'text-gray-400 bg-gray-100 cursor-not-allowed'
+                    } focus:outline-none focus:ring-2 focus:ring-offset-2 transition-colors duration-200`}
+                  >
+                    <RouteOutlinedIcon style={{ fontSize: 16 }} />
+                    เพิ่มเส้นทาง
+                  </button>
+                </div>
               </div>
 
               {/* แสดงรายการเส้นทาง */}
-              <div className="mt-4 border border-gray-200 rounded-lg p-2">
+              <div className="mt-2 border border-gray-200 rounded-lg p-2">
                 {routes.length === 0 ? (
                   <div className="text-center text-gray-500 text-sm">ไม่มีเส้นทางเดินรถ</div>
                 ) : (
-                  <div className="space-y-1">
+                  <div className="space-y-2">
                     {routes.map((route) => (
-                      <div key={route.id} className="flex items-center space-x-2 p-1 bg-gray-50 rounded-lg text-sm">
+                      <div key={route.id} className="flex items-center gap-2 p-1.5 bg-gray-50 rounded-lg text-sm">
                         <div className="flex items-center">
                           <input
                             type="checkbox"
                             checked={route.selected}
                             onChange={() => handleToggleRouteSelect(route.id)}
-                            className="h-3 w-3 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                            className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
                           />
                         </div>
                         <div className="w-5 h-5 flex items-center justify-center bg-blue-100 rounded-full">
@@ -351,33 +424,42 @@ export default function Home() {
             </div>
           </div>
 
-          <div className="space-y-4">
+          <div className="space-y-2">
             <button
               type="button"
               onClick={handleCheckStatus}
-              className="w-full flex justify-center items-center gap-2 py-3 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-orange-400 hover:bg-orange-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-300 transition-colors duration-200"
+              className="w-full flex justify-center items-center gap-2 py-1.5 px-3 text-sm border border-transparent rounded-lg shadow-sm font-medium text-white bg-orange-400 hover:bg-orange-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-300 transition-colors duration-200"
             >
-              <SearchOutlinedIcon />
+              <SearchOutlinedIcon style={{ fontSize: 16 }} />
               ตรวจสอบสถานะ
             </button>
 
             <button
               type="submit"
               onClick={handleStartJob}
-              className="w-full flex justify-center items-center gap-2 py-3 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-green-400 hover:bg-green-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-300 transition-colors duration-200"
+              className="w-full flex justify-center items-center gap-2 py-1.5 px-3 text-sm border border-transparent rounded-lg shadow-sm font-medium text-white bg-green-400 hover:bg-green-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-300 transition-colors duration-200"
             >
-              <PlayArrowOutlinedIcon />
+              <PlayArrowOutlinedIcon style={{ fontSize: 16 }} />
               รับงานอัตโนมัติ
             </button>
 
             <button
               type="button"
               onClick={handleStop}
-              className="w-full flex justify-center items-center gap-2 py-3 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-red-400 hover:bg-red-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-300 transition-colors duration-200"
+              className="w-full flex justify-center items-center gap-2 py-1.5 px-3 text-sm border border-transparent rounded-lg shadow-sm font-medium text-white bg-red-400 hover:bg-red-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-300 transition-colors duration-200"
             >
-              <StopOutlinedIcon />
+              <StopOutlinedIcon style={{ fontSize: 16 }} />
               หยุดการทำงาน
             </button>
+
+            {/* <button
+              type="button"
+              onClick={handleRestartChrome}
+              className="w-full flex justify-center items-center gap-2 py-1.5 px-3 text-sm border border-transparent rounded-lg shadow-sm font-medium text-white bg-blue-400 hover:bg-blue-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-300 transition-colors duration-200"
+            >
+              <RefreshIcon style={{ fontSize: 16 }} />
+              รีสตาร์ท Chrome
+            </button> */}
           </div>
         </form>
       </div>
