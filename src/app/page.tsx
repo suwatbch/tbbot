@@ -3,7 +3,6 @@ import { useState, useEffect } from "react";
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import DirectionsCarOutlinedIcon from '@mui/icons-material/DirectionsCarOutlined';
 import RouteOutlinedIcon from '@mui/icons-material/RouteOutlined';
-import AddRoadOutlinedIcon from '@mui/icons-material/AddRoadOutlined';
 import PlayArrowOutlinedIcon from '@mui/icons-material/PlayArrowOutlined';
 import StopOutlinedIcon from '@mui/icons-material/StopOutlined';
 import SearchOutlinedIcon from '@mui/icons-material/SearchOutlined';
@@ -26,7 +25,7 @@ interface CarType {
 interface Alert {
   id: number;
   message: string;
-  type: 'info' | 'error';
+  type: 'info' | 'success' | 'warning' | 'error';
 }
 
 export default function Home() {
@@ -117,7 +116,7 @@ export default function Home() {
     setCarTypes(newCarTypes);
   };
 
-  const addAlert = (message: string, type: 'info' | 'error') => {
+  const addAlert = (message: string, type: 'info' | 'success' | 'warning' | 'error') => {
     const newAlert = {
       id: Date.now(),
       message,
@@ -138,9 +137,35 @@ export default function Home() {
     addAlert("ระบบได้หยุดการทำงานแล้ว", "error");
   };
 
+  const handleStartJob = (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    // เก็บรถที่เลือก (isActive = true)
+    const selectedCars = carTypes.filter(car => car.isActive && car.quantity > 0)
+      .map(car => `${car.type} (${car.quantity} คัน)`);
+
+    // เก็บเส้นทางที่เลือก (selected = true)
+    const selectedRoutes = routes.filter(route => route.selected)
+      .map(route => `${route.id}. ${route.start}`);
+
+    if (selectedCars.length === 0) {
+      addAlert("กรุณาเลือกประเภทรถที่ต้องการใช้งาน", "warning");
+      return;
+    }
+
+    if (selectedRoutes.length === 0) {
+      addAlert("กรุณาเลือกเส้นทางที่ต้องการทำงาน", "warning");
+      return;
+    }
+
+    // สร้างข้อความแจ้งเตือน
+    const message = `รถที่รับงาน: ${selectedCars.join(", ")}\nเส้นทาง: ${selectedRoutes.join(", ")}`;
+    addAlert(message, "success");
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
-      <div className="max-w-md w-full space-y-8 bg-white p-8 rounded-2xl shadow-lg">
+      <div className="max-w-md w-full bg-white p-8 rounded-2xl shadow-lg">
         {/* Header */}
         <div className="text-center">
           <DirectionsCarOutlinedIcon 
@@ -152,27 +177,33 @@ export default function Home() {
           </h2>
           
           {/* Alert Area */}
-          <div className="mt-2 h-12 overflow-y-auto">
+          <div className="mt-2 min-h-[3rem]">
             {alerts.map(alert => (
               <div
                 key={alert.id}
-                className={`flex items-center justify-between p-1.5 rounded-lg text-sm ${
+                className={`flex items-start gap-2 p-1.5 rounded-lg text-sm whitespace-pre-line ${
                   alert.type === 'info' 
-                    ? 'bg-blue-50 text-blue-700' 
+                    ? 'bg-blue-50 text-blue-700'
+                    : alert.type === 'success'
+                    ? 'bg-green-50 text-green-700'
+                    : alert.type === 'warning'
+                    ? 'bg-orange-50 text-orange-700'
                     : 'bg-red-50 text-red-700'
                 }`}
               >
-                <div className="flex items-center gap-1.5">
-                  {alert.type === 'info' ? (
-                    <InfoOutlinedIcon className="text-blue-500" style={{ fontSize: 14 }} />
-                  ) : (
-                    <ErrorOutlineIcon className="text-red-500" style={{ fontSize: 14 }} />
-                  )}
-                  <span>{alert.message}</span>
-                </div>
+                {alert.type === 'info' ? (
+                  <InfoOutlinedIcon className="text-blue-500 mt-1.5 flex-shrink-0" style={{ fontSize: 14 }} />
+                ) : alert.type === 'success' ? (
+                  <PlayArrowOutlinedIcon className="text-green-500 mt-1.5 flex-shrink-0" style={{ fontSize: 14 }} />
+                ) : alert.type === 'warning' ? (
+                  <ErrorOutlineIcon className="text-orange-500 mt-1.5 flex-shrink-0" style={{ fontSize: 14 }} />
+                ) : (
+                  <ErrorOutlineIcon className="text-red-500 mt-1.5 flex-shrink-0" style={{ fontSize: 14 }} />
+                )}
+                <span className="flex-1">{alert.message}</span>
                 <button
                   onClick={() => removeAlert(alert.id)}
-                  className="p-0.5 hover:bg-gray-200 rounded-full"
+                  className="p-0.5 hover:bg-gray-200 rounded-full flex-shrink-0"
                 >
                   <CloseIcon style={{ fontSize: 14 }} />
                 </button>
@@ -181,7 +212,7 @@ export default function Home() {
           </div>
         </div>
 
-        <form className="mt-4 space-y-6">
+        <form className="space-y-6">
           <div className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 flex items-center gap-2 mb-2">
@@ -332,6 +363,7 @@ export default function Home() {
 
             <button
               type="submit"
+              onClick={handleStartJob}
               className="w-full flex justify-center items-center gap-2 py-3 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-green-400 hover:bg-green-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-300 transition-colors duration-200"
             >
               <PlayArrowOutlinedIcon />
