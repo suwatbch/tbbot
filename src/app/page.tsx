@@ -40,7 +40,7 @@ export default function Home() {
   const [currentRoute, setCurrentRoute] = useState('');
   const [routes, setRoutes] = useState<RoutePoint[]>([]);
   const [alerts, setAlerts] = useState<Alert[]>([]);
-  const [isDebugMode, setIsDebugMode] = useState(false);
+  const [statusValue, setStatusValue] = useState<boolean | null>(null);
 
   useEffect(() => {
     document.title = "Turbo Bot";
@@ -178,29 +178,27 @@ export default function Home() {
 
       const data = await response.json();
       
-      // เพิ่ม logging เพื่อ debug
-      console.log('Chrome status response:', data);
-      console.log('Debug mode value:', data.debugMode);
-      
-      // เช็ค debug mode
+      // Update the statusValue state
+      setStatusValue(data.status);
+
+      // Check debug mode
       if (data.debugMode === true) {
-        setIsDebugMode(true);
         addAlert("Chrome กำลังทำงานใน Debug Mode", "warning");
-      } else {
-        setIsDebugMode(false);
       }
-      
+
+      // Add alert with concatenated message and status
+      const alertMessage = `${data.message} Status: ${data.status}`;
       if (data.status === true) {
-        addAlert(data.message, "success");
+        addAlert(alertMessage, "success");
       } else {
-        addAlert(data.message, "warning");
+        addAlert(alertMessage, "warning");
       }
     } catch (error) {
       addAlert("ไม่สามารถเชื่อมต่อกับ API ได้", "error");
     }
   };
 
-  const handleRestartChrome = async () => {
+  const handleOpenChrome = async () => {
     try {
       const response = await fetch('http://localhost:4000/open-chrome', {
         method: 'POST',
@@ -240,25 +238,20 @@ export default function Home() {
 
       // รอ 2 วินาทีแล้วปิด Chrome
       await new Promise(resolve => setTimeout(resolve, 2000));
-      await fetch('http://localhost:4000/close-chrome');
-
-      // เช็คสถานะ Chrome และ debug mode หลังจาก restart
-      const checkResponse = await fetch('http://localhost:4000/check-chrome', {
-        method: 'GET',
-      });
-
-      const checkData = await checkResponse.json();
-      console.log('Chrome status after restart:', checkData);
-      
-      if (checkData.debugMode === true) {
-        setIsDebugMode(true);
-        addAlert("Chrome กำลังทำงานใน Debug Mode", "warning");
-      } else {
-        setIsDebugMode(false);
-      }
 
     } catch (error) {
       addAlert("ไม่สามารถเชื่อมต่อกับ API ได้", "error");
+    }
+  };
+
+  const handleCloseChrome = () => {
+    try {
+      fetch('http://localhost:4000/close-chrome', {
+        method: 'GET'
+      });
+    } catch (error) {
+      console.error('Error closing Chrome:', error);
+      addAlert("ไม่สามารถปิด Chrome ได้", "error");
     }
   };
 
@@ -531,16 +524,16 @@ export default function Home() {
                 <CheckCircleOutlineIcon style={{ fontSize: 14 }} />
                 Check-Chrome
               </button>
-              {!isDebugMode && (
+              {!statusValue ? (
                 <button
                   type="button"
-                  onClick={handleRestartChrome}
+                  onClick={handleCloseChrome}
                   className="text-blue-600 hover:text-blue-800 transition-colors duration-200 flex items-center gap-1"
                 >
                   <RestartAltIcon style={{ fontSize: 14 }} />
-                  Restart-Chrome
+                  Close-Chrome
                 </button>
-              )}
+              ) : null}
             </div>
           </div>
         </form>
