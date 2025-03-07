@@ -9,7 +9,8 @@ import SearchOutlinedIcon from '@mui/icons-material/SearchOutlined';
 import CloseIcon from '@mui/icons-material/Close';
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 import ErrorOutlineIcon from '@mui/icons-material/ErrorOutline';
-import RefreshIcon from '@mui/icons-material/Refresh';
+import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
+import RestartAltIcon from '@mui/icons-material/RestartAlt';
 
 interface RoutePoint {
   id: number;
@@ -39,6 +40,7 @@ export default function Home() {
   const [currentRoute, setCurrentRoute] = useState('');
   const [routes, setRoutes] = useState<RoutePoint[]>([]);
   const [alerts, setAlerts] = useState<Alert[]>([]);
+  const [isDebugMode, setIsDebugMode] = useState(false);
 
   useEffect(() => {
     document.title = "Turbo Bot";
@@ -60,6 +62,9 @@ export default function Home() {
     if (savedRoutes) {
       setRoutes(JSON.parse(savedRoutes));
     }
+
+    // เช็คสถานะ Chrome เมื่อเริ่มต้นโปรแกรม
+    handleCheckChrome();
   }, []);
 
   // บันทึกข้อมูลลง localStorage ทุกครั้งที่มีการเปลี่ยนแปลง
@@ -132,7 +137,7 @@ export default function Home() {
 
   const handleCheckStatus = async () => {
     try {
-      const response = await fetch('http://localhost:5000/status', {
+      const response = await fetch('http://localhost:4000/status', {
         method: 'GET'
       });
 
@@ -154,7 +159,7 @@ export default function Home() {
 
   const handleStop = async () => {
     try {
-      const response = await fetch('http://localhost:5000/stop', {
+      const response = await fetch('http://localhost:4000/stop', {
         method: 'GET'
       });
 
@@ -165,28 +170,93 @@ export default function Home() {
     }
   };
 
+  const handleCheckChrome = async () => {
+    try {
+      const response = await fetch('http://localhost:4000/check-chrome', {
+        method: 'GET',
+      });
+
+      const data = await response.json();
+      
+      // เพิ่ม logging เพื่อ debug
+      console.log('Chrome status response:', data);
+      console.log('Debug mode value:', data.debugMode);
+      
+      // เช็ค debug mode
+      if (data.debugMode === true) {
+        setIsDebugMode(true);
+        addAlert("Chrome กำลังทำงานใน Debug Mode", "warning");
+      } else {
+        setIsDebugMode(false);
+      }
+      
+      if (data.status === true) {
+        addAlert(data.message, "success");
+      } else {
+        addAlert(data.message, "warning");
+      }
+    } catch (error) {
+      addAlert("ไม่สามารถเชื่อมต่อกับ API ได้", "error");
+    }
+  };
+
   const handleRestartChrome = async () => {
     try {
-      const response = await fetch('http://localhost:5000/restart-chrome', {
+      const response = await fetch('http://localhost:4000/open-chrome', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
           urls: [
-            window.location.href,
-            'https://th.turboroute.ai/#/login'
+            "http://localhost:3000",
+            "https://th.turboroute.ai/#/login"
           ]
         })
       });
 
       const data = await response.json();
       
-      if (data.status === "success") {
-        addAlert(data.message, "success");
-      } else {
+      // กรณีข้อมูลไม่ถูกต้อง หรือไม่พบ URL ที่ถูกต้อง
+      if (data.status === 'error') {
         addAlert(data.message, "error");
+        return;
       }
+
+      // กรณีไม่สามารถเชื่อมต่อ Chrome ได้
+      if (data.status === false) {
+        const message = data.error 
+          ? `${data.message}\nสาเหตุ: ${data.error}`
+          : data.message;
+        addAlert(message, "warning");
+        return;
+      }
+
+      // กรณีเปิด Chrome สำเร็จ
+      if (data.status === true && data.openedUrls) {
+        const message = `${data.message}\nURLs ที่เปิด: ${data.openedUrls.join(", ")}`;
+        addAlert(message, "success");
+      }
+
+      // รอ 2 วินาทีแล้วปิด Chrome
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      await fetch('http://localhost:4000/close-chrome');
+
+      // เช็คสถานะ Chrome และ debug mode หลังจาก restart
+      const checkResponse = await fetch('http://localhost:4000/check-chrome', {
+        method: 'GET',
+      });
+
+      const checkData = await checkResponse.json();
+      console.log('Chrome status after restart:', checkData);
+      
+      if (checkData.debugMode === true) {
+        setIsDebugMode(true);
+        addAlert("Chrome กำลังทำงานใน Debug Mode", "warning");
+      } else {
+        setIsDebugMode(false);
+      }
+
     } catch (error) {
       addAlert("ไม่สามารถเชื่อมต่อกับ API ได้", "error");
     }
@@ -214,7 +284,7 @@ export default function Home() {
     }
 
     try {
-      const response = await fetch('http://localhost:5000/start', {
+      const response = await fetch('http://localhost:4000/start', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -452,14 +522,26 @@ export default function Home() {
               หยุดการทำงาน
             </button>
 
-            {/* <button
-              type="button"
-              onClick={handleRestartChrome}
-              className="w-full flex justify-center items-center gap-2 py-1.5 px-3 text-sm border border-transparent rounded-lg shadow-sm font-medium text-white bg-blue-400 hover:bg-blue-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-300 transition-colors duration-200"
-            >
-              <RefreshIcon style={{ fontSize: 16 }} />
-              รีสตาร์ท Chrome
-            </button> */}
+            <div className="flex justify-between items-center text-sm px-1">
+              <button
+                type="button"
+                onClick={handleCheckChrome}
+                className="text-blue-600 hover:text-blue-800 transition-colors duration-200 flex items-center gap-1"
+              >
+                <CheckCircleOutlineIcon style={{ fontSize: 14 }} />
+                Check-Chrome
+              </button>
+              {!isDebugMode && (
+                <button
+                  type="button"
+                  onClick={handleRestartChrome}
+                  className="text-blue-600 hover:text-blue-800 transition-colors duration-200 flex items-center gap-1"
+                >
+                  <RestartAltIcon style={{ fontSize: 14 }} />
+                  Restart-Chrome
+                </button>
+              )}
+            </div>
           </div>
         </form>
       </div>
