@@ -12,6 +12,8 @@ import ErrorOutlineIcon from '@mui/icons-material/ErrorOutline';
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
 import RestartAltIcon from '@mui/icons-material/RestartAlt';
 
+const URL_TBSERVICE = 'http://localhost:4000';
+
 interface RoutePoint {
   id: number;
   start: string;
@@ -137,21 +139,16 @@ export default function Home() {
 
   const handleCheckStatus = async () => {
     try {
-      const response = await fetch('http://localhost:4000/status', {
+      const response = await fetch(`${URL_TBSERVICE}/status`, {
         method: 'GET'
       });
 
       const data = await response.json();
       
-      // เลือกประเภทการแจ้งเตือนตามสถานะ
-      const alertType = data.status === 'running' ? 'success' : 'info';
+      // แสดงข้อความตามสถานะ
+      const alertType = data.status === 'running' ? 'success' : 'error';
       addAlert(data.message, alertType);
       
-      // ถ้ามีข้อมูล config เพิ่มเติม
-      if (data.config) {
-        const configMessage = `รถที่เหลือ: ${data.config.remainingCars.join(', ')}\nเส้นทางที่กำหนด: ${data.config.assignedRoutes.join(', ')}`;
-        addAlert(configMessage, alertType);
-      }
     } catch (error) {
       addAlert("ไม่สามารถเชื่อมต่อกับ API ได้", "error");
     }
@@ -159,7 +156,7 @@ export default function Home() {
 
   const handleStop = async () => {
     try {
-      const response = await fetch('http://localhost:4000/stop', {
+      const response = await fetch(`${URL_TBSERVICE}/stop`, {
         method: 'GET'
       });
 
@@ -172,73 +169,19 @@ export default function Home() {
 
   const handleCheckChrome = async () => {
     try {
-      const response = await fetch('http://localhost:4000/check-chrome', {
+      const response = await fetch(`${URL_TBSERVICE}/check-chrome`, {
         method: 'GET',
       });
 
       const data = await response.json();
       
-      // Update the statusValue state
       setStatusValue(data.status);
 
-      // Check debug mode
-      if (data.debugMode === true) {
-        addAlert("Chrome กำลังทำงานใน Debug Mode", "warning");
-      }
-
-      // Add alert with concatenated message and status
-      const alertMessage = `${data.message} Status: ${data.status}`;
       if (data.status === true) {
-        addAlert(alertMessage, "success");
+        addAlert(data.message, "success");
       } else {
-        addAlert(alertMessage, "warning");
+        addAlert(data.message, "warning");
       }
-    } catch (error) {
-      addAlert("ไม่สามารถเชื่อมต่อกับ API ได้", "error");
-    }
-  };
-
-  const handleOpenChrome = async () => {
-    try {
-      const response = await fetch('http://localhost:4000/open-chrome', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          urls: [
-            "http://localhost:3000",
-            "https://th.turboroute.ai/#/login"
-          ]
-        })
-      });
-
-      const data = await response.json();
-      
-      // กรณีข้อมูลไม่ถูกต้อง หรือไม่พบ URL ที่ถูกต้อง
-      if (data.status === 'error') {
-        addAlert(data.message, "error");
-        return;
-      }
-
-      // กรณีไม่สามารถเชื่อมต่อ Chrome ได้
-      if (data.status === false) {
-        const message = data.error 
-          ? `${data.message}\nสาเหตุ: ${data.error}`
-          : data.message;
-        addAlert(message, "warning");
-        return;
-      }
-
-      // กรณีเปิด Chrome สำเร็จ
-      if (data.status === true && data.openedUrls) {
-        const message = `${data.message}\nURLs ที่เปิด: ${data.openedUrls.join(", ")}`;
-        addAlert(message, "success");
-      }
-
-      // รอ 2 วินาทีแล้วปิด Chrome
-      await new Promise(resolve => setTimeout(resolve, 2000));
-
     } catch (error) {
       addAlert("ไม่สามารถเชื่อมต่อกับ API ได้", "error");
     }
@@ -246,7 +189,7 @@ export default function Home() {
 
   const handleCloseChrome = () => {
     try {
-      fetch('http://localhost:4000/close-chrome', {
+      fetch(`${URL_TBSERVICE}/close-chrome`, {
         method: 'GET'
       });
     } catch (error) {
@@ -277,20 +220,21 @@ export default function Home() {
     }
 
     try {
-      const response = await fetch('http://localhost:4000/start', {
+      const response = await fetch(`${URL_TBSERVICE}/start`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
           cars: selectedCars,
-          routes: selectedRoutes
+          routes: selectedRoutes,
+          testMode: true
         })
       });
 
       const data = await response.json();
       addAlert(data.message, data.status === 'success' ? 'success' : 'error');
-    } catch (error) {
+    } catch (error) { 
       addAlert("ไม่สามารถเชื่อมต่อกับ API ได้", "error");
     }
   };
@@ -381,10 +325,10 @@ export default function Home() {
                       <input
                         type="number"
                         min="0"
-                        value={car.quantity || 0}
+                        value={car.quantity === 0 ? '' : car.quantity}
                         onChange={(e) => {
                           const newCarTypes = [...carTypes];
-                          newCarTypes[index].quantity = parseInt(e.target.value, 10) || 0;
+                          newCarTypes[index].quantity = e.target.value === '' ? 0 : parseInt(e.target.value, 10);
                           setCarTypes(newCarTypes);
                         }}
                         className={`appearance-none block w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 ${!car.isActive ? 'bg-gray-100 text-gray-500' : ''}`}
@@ -531,7 +475,7 @@ export default function Home() {
                   className="text-blue-600 hover:text-blue-800 transition-colors duration-200 flex items-center gap-1"
                 >
                   <RestartAltIcon style={{ fontSize: 14 }} />
-                  Close-Chrome
+                  Reset-Chrome
                 </button>
               ) : null}
             </div>
