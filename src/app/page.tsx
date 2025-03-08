@@ -85,7 +85,7 @@ export default function Home() {
     setRoutes([...routes, { 
       id: newId, 
       start: currentRoute.trim(),
-      selected: false
+      selected: true
     }]);
     setCurrentRoute('');
   };
@@ -227,8 +227,7 @@ export default function Home() {
         },
         body: JSON.stringify({
           cars: selectedCars,
-          routes: selectedRoutes,
-          testMode: true
+          routes: selectedRoutes
         })
       });
 
