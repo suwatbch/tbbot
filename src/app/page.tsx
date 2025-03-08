@@ -145,9 +145,42 @@ export default function Home() {
 
       const data = await response.json();
       
+      // สร้างข้อความแสดงรายละเอียด
+      let statusMessage = '';
+      
+      // ถ้า currentRound = 0 แสดงแค่ message
+      if (data.currentRound === 0) {
+        statusMessage = data.message;
+      } else {
+        // ถ้า currentRound > 0 แสดงรายละเอียดเพิ่มเติม
+        statusMessage = data.message;
+
+        // เพิ่มข้อมูลรถที่ว่าง
+        if (data.details?.availableCars) {
+          if (Array.isArray(data.details.availableCars)) {
+            data.details.availableCars.forEach((car: string) => {
+              statusMessage += `\nว่าง: ${car}`;
+            });
+          } else {
+            statusMessage += `\nว่าง: ${data.details.availableCars}`;
+          }
+        }
+        
+        // เพิ่มข้อมูลรถที่รับงานแล้ว
+        if (data.details?.acceptedJobs) {
+          if (Array.isArray(data.details.acceptedJobs)) {
+            data.details.acceptedJobs.forEach((job: string) => {
+              statusMessage += `\nรับงานแล้ว: ${job}`;
+            });
+          } else {
+            statusMessage += `\nรับงานแล้ว: ${data.details.acceptedJobs}`;
+          }
+        }
+      }
+      
       // แสดงข้อความตามสถานะ
       const alertType = data.status === 'running' ? 'success' : 'error';
-      addAlert(data.message, alertType);
+      addAlert(statusMessage, alertType);
       
     } catch (error) {
       addAlert("ไม่สามารถเชื่อมต่อกับ API ได้", "error");
@@ -434,7 +467,12 @@ export default function Home() {
             <button
               type="button"
               onClick={handleCheckStatus}
-              className="w-full flex justify-center items-center gap-2 py-1.5 px-3 text-sm border border-transparent rounded-lg shadow-sm font-medium text-white bg-orange-400 hover:bg-orange-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-300 transition-colors duration-200"
+              disabled={!statusValue}
+              className={`w-full flex justify-center items-center gap-2 py-1.5 px-3 text-sm border border-transparent rounded-lg shadow-sm font-medium text-white ${
+                !statusValue 
+                  ? 'bg-gray-400 cursor-not-allowed' 
+                  : 'bg-orange-400 hover:bg-orange-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-300'
+              } transition-colors duration-200`}
             >
               <SearchOutlinedIcon style={{ fontSize: 16 }} />
               ตรวจสอบสถานะ
@@ -443,7 +481,12 @@ export default function Home() {
             <button
               type="submit"
               onClick={handleStartJob}
-              className="w-full flex justify-center items-center gap-2 py-1.5 px-3 text-sm border border-transparent rounded-lg shadow-sm font-medium text-white bg-green-400 hover:bg-green-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-300 transition-colors duration-200"
+              disabled={!statusValue}
+              className={`w-full flex justify-center items-center gap-2 py-1.5 px-3 text-sm border border-transparent rounded-lg shadow-sm font-medium text-white ${
+                !statusValue 
+                  ? 'bg-gray-400 cursor-not-allowed' 
+                  : 'bg-green-400 hover:bg-green-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-300'
+              } transition-colors duration-200`}
             >
               <PlayArrowOutlinedIcon style={{ fontSize: 16 }} />
               รับงานอัตโนมัติ
@@ -452,7 +495,12 @@ export default function Home() {
             <button
               type="button"
               onClick={handleStop}
-              className="w-full flex justify-center items-center gap-2 py-1.5 px-3 text-sm border border-transparent rounded-lg shadow-sm font-medium text-white bg-red-400 hover:bg-red-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-300 transition-colors duration-200"
+              disabled={!statusValue}
+              className={`w-full flex justify-center items-center gap-2 py-1.5 px-3 text-sm border border-transparent rounded-lg shadow-sm font-medium text-white ${
+                !statusValue 
+                  ? 'bg-gray-400 cursor-not-allowed' 
+                  : 'bg-red-400 hover:bg-red-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-300'
+              } transition-colors duration-200`}
             >
               <StopOutlinedIcon style={{ fontSize: 16 }} />
               หยุดการทำงาน
