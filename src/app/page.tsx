@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import DirectionsCarOutlinedIcon from '@mui/icons-material/DirectionsCarOutlined';
 import RouteOutlinedIcon from '@mui/icons-material/RouteOutlined';
@@ -12,7 +12,7 @@ import ErrorOutlineIcon from '@mui/icons-material/ErrorOutline';
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
 import RestartAltIcon from '@mui/icons-material/RestartAlt';
 
-const URL_TBSERVICE = 'http://localhost:4000';
+const URL_TBSERVICE = 'https://tbservice.swmaxnet.com';
 
 interface RoutePoint {
   id: number;
@@ -133,7 +133,7 @@ export default function Home() {
     setAlerts([newAlert]);
   };
 
-  const removeAlert = (id: number) => {
+  const removeAlert = () => {
     setAlerts([]);
   };
 
@@ -182,7 +182,7 @@ export default function Home() {
       const alertType = data.status === 'running' ? 'success' : 'error';
       addAlert(statusMessage, alertType);
       
-    } catch (error) {
+    } catch {
       addAlert("ไม่สามารถเชื่อมต่อกับ API ได้", "error");
     }
   };
@@ -195,12 +195,12 @@ export default function Home() {
 
       const data = await response.json();
       addAlert(data.message, "error");
-    } catch (error) {
+    } catch {
       addAlert("ไม่สามารถเชื่อมต่อกับ API ได้", "error");
     }
   };
 
-  const handleCheckChrome = async () => {
+  const handleCheckChrome = useCallback(async () => {
     try {
       const response = await fetch(`${URL_TBSERVICE}/check-chrome`, {
         method: 'GET',
@@ -215,18 +215,18 @@ export default function Home() {
       } else {
         addAlert(data.message, "warning");
       }
-    } catch (error) {
+    } catch {
       addAlert("ไม่สามารถเชื่อมต่อกับ API ได้", "error");
     }
-  };
+  }, []);
 
   const handleCloseChrome = () => {
     try {
       fetch(`${URL_TBSERVICE}/close-chrome`, {
         method: 'GET'
       });
-    } catch (error) {
-      console.error('Error closing Chrome:', error);
+    } catch {
+      console.error('Error closing Chrome');
       addAlert("ไม่สามารถปิด Chrome ได้", "error");
     }
   };
@@ -266,7 +266,7 @@ export default function Home() {
 
       const data = await response.json();
       addAlert(data.message, data.status === 'success' ? 'success' : 'error');
-    } catch (error) { 
+    } catch {
       addAlert("ไม่สามารถเชื่อมต่อกับ API ได้", "error");
     }
   };
@@ -310,7 +310,7 @@ export default function Home() {
                 )}
                 <span className="flex-1 mt-0.5">{alert.message}</span>
                 <button
-                  onClick={() => removeAlert(alert.id)}
+                  onClick={() => removeAlert()}
                   className="p-0.5 hover:bg-gray-200 rounded-full flex-shrink-0"
                 >
                   <CloseIcon style={{ fontSize: 14 }} />
