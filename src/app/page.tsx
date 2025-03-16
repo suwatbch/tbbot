@@ -12,7 +12,7 @@ import ErrorOutlineIcon from '@mui/icons-material/ErrorOutline';
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
 import RestartAltIcon from '@mui/icons-material/RestartAlt';
 
-const URL_TBSERVICE = 'https://tbservice.swmaxnet.com';
+const URL_TBSERVICE = 'http://localhost:3000';
 
 interface RoutePoint {
   id: number;
