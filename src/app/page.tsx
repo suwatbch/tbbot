@@ -12,7 +12,7 @@ import ErrorOutlineIcon from '@mui/icons-material/ErrorOutline';
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
 import RestartAltIcon from '@mui/icons-material/RestartAlt';
 
-const URL_TBSERVICE = 'http://localhost:3000';
+const URL_TBSERVICE = 'http://127.0.0.1:4000';
 
 interface RoutePoint {
   id: number;
@@ -272,7 +272,7 @@ export default function Home() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gray-100 flex items-center justify-center p-4">
       <div className="max-w-md w-full bg-white p-6 rounded-xl shadow-lg">
         {/* Header */}
         <div className="text-center">
